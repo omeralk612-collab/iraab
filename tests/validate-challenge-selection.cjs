@@ -1,0 +1,21 @@
+'use strict';
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const root = path.resolve(__dirname, '..');
+const nodes = new Map();
+function node(sel) { if (!nodes.has(sel)) nodes.set(sel, {textContent:'',innerHTML:'',hidden:false,disabled:false,value:'',style:{},classList:{toggle(){}},focus(){},addEventListener(){}}); return nodes.get(sel); }
+const document = {body:{classList:{toggle(){}}},querySelector:node,querySelectorAll:()=>[],addEventListener(){}};
+const context = {console,document,localStorage:{getItem(){return null;},setItem(){},removeItem(){}},navigator:{},location:{protocol:'file:',hostname:''},window:{addEventListener(){},scrollTo(){}},Intl,Date,Math,JSON,Array,Object,String,Number,Boolean,RegExp,Error,setTimeout,clearTimeout,Blob:function(){},URL:{createObjectURL(){return '';},revokeObjectURL(){}},alert(){},confirm(){return true}};
+context.window.IraabContent = {};
+vm.createContext(context);
+vm.runInContext(fs.readFileSync(path.join(root,'content.js'),'utf8'),context,{filename:'content.js'});
+vm.runInContext(fs.readFileSync(path.join(root,'app.js'),'utf8'),context,{filename:'app.js'});
+const selected = vm.runInContext('buildChallengeQueue(window.IraabContent.questions, 5).map(q => ({id:q.id, lessonId:q.lessonId, questionType:q.questionType}))',context);
+assert.equal(selected.length,5,'A standard challenge should contain five questions');
+assert.equal(new Set(selected.map(q=>q.id)).size,5,'A challenge must not repeat a question');
+assert.equal(new Set(selected.map(q=>q.lessonId)).size,5,'A challenge should cover different lessons when enough questions exist');
+assert.equal(new Set(selected.map(q=>q.questionType)).size,5,'A challenge should vary question types when enough types exist');
+console.log('PASS: challenge selection returns five unique questions from different lessons and types when possible.');
+console.log('LIMIT: selection is algorithmically tested; its pedagogical balance still needs student testing.');
